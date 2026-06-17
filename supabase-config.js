@@ -32,13 +32,21 @@ async function supabaseRequest(table, options = {}) {
 
   const response = await fetch(url, fetchOptions);
 
+  // Yanıt gövdesini metin olarak oku (boş olabilir)
+  const rawText = await response.text();
+
   if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Supabase isteği başarısız (${response.status}): ${errText}`);
+    throw new Error(`Supabase isteği başarısız (${response.status}): ${rawText}`);
   }
 
-  // 204 No Content (silme/güncelleme sonrası) durumunda boş dön
-  if (response.status === 204) return null;
+  // Gövde boşsa (204 No Content veya Prefer header olmadan yapılan POST/PATCH/DELETE)
+  // JSON.parse denemeden boş dön
+  if (!rawText) return null;
 
-  return response.json();
+  try {
+    return JSON.parse(rawText);
+  } catch (e) {
+    // Beklenmeyen şekilde JSON olmayan ama hatasız bir yanıt geldiyse sessizce null dön
+    return null;
+  }
 }
