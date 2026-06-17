@@ -59,7 +59,7 @@ function buildWhatsAppLink(phoneNumber, message) {
 }
 
 function initWhatsAppLinks() {
-  const WHATSAPP_NUMBER = "905000000000"; // <-- Gerçek numarayı buraya yaz (90 ile başlayan, boşluksuz)
+  const WHATSAPP_NUMBER = "905436443552";
   const DEFAULT_MESSAGE =
     "Merhaba.\nÖztürkçe Akademi'nin birebir akademik gelişim desteği hakkında bilgi almak istiyorum.\nÖğrencim .... sınıfta.\nBilgi verebilir misiniz?";
 
