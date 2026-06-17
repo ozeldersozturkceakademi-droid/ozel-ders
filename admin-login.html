@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yönetim Paneli Girişi | Öztürkçe Akademi</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink);
+  }
+  .login-box {
+    background: var(--paper);
+    border-radius: var(--radius);
+    padding: 44px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-box .logo {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .login-box .logo span { color: var(--pine); }
+  .login-box p.sub { font-size: 0.9rem; color: var(--ink-soft); margin-bottom: 28px; }
+</style>
+</head>
+<body>
+
+<div class="login-box">
+  <div class="logo">Öztürkçe<span>Akademi</span></div>
+  <p class="sub">Yönetim Paneli</p>
+
+  <form id="login-form">
+    <div class="field">
+      <label>Kullanıcı Adı</label>
+      <input type="text" name="kullanici_adi" required autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Şifre</label>
+      <input type="password" name="sifre" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn btn-primary" id="login-btn" style="width:100%; justify-content:center;">Giriş Yap</button>
+    <div class="form-status" id="login-status"></div>
+  </form>
+</div>
+
+<script src="supabase-config.js"></script>
+<script>
+  document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById("login-btn");
+    const status = document.getElementById("login-status");
+    status.className = "form-status";
+
+    const formData = new FormData(form);
+    const kullaniciAdi = formData.get("kullanici_adi").trim();
+    const sifre = formData.get("sifre");
+
+    btn.disabled = true;
+    btn.textContent = "Giriş yapılıyor...";
+
+    try {
+      const result = await supabaseRequest("admin_kullanicilar", {
+        query: `?select=id,kullanici_adi&kullanici_adi=eq.${encodeURIComponent(kullaniciAdi)}&sifre=eq.${encodeURIComponent(sifre)}&limit=1`,
+      });
+
+      if (result && result.length > 0) {
+        sessionStorage.setItem("oa_admin_giris", "true");
+        sessionStorage.setItem("oa_admin_kullanici", result[0].kullanici_adi);
+        window.location.href = "admin-panel.html";
+      } else {
+        status.textContent = "Kullanıcı adı veya şifre hatalı.";
+        status.classList.add("error");
+      }
+    } catch (err) {
+      console.error(err);
+      status.textContent = "Giriş yapılamadı. Bağlantı bilgilerini kontrol edin.";
+      status.classList.add("error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Giriş Yap";
+    }
+  });
+</script>
+</body>
+</html>

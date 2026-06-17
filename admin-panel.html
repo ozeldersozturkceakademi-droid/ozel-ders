@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yönetim Paneli | Öztürkçe Akademi</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  body { background: var(--paper); }
+
+  .admin-header {
+    background: var(--ink);
+    color: #fff;
+    padding: 18px 0;
+  }
+  .admin-header .inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .admin-header .logo { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; }
+  .admin-header .logo span { color: #8FBBA9; }
+  .admin-header .right { display:flex; align-items:center; gap:18px; font-size:0.88rem; color:#C9D0CD; }
+  .admin-header button.logout {
+    background:none; border:1px solid rgba(255,255,255,0.25); color:#fff;
+    padding:8px 16px; border-radius:6px; font-size:0.85rem; cursor:pointer;
+  }
+  .admin-header button.logout:hover { border-color:#fff; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 32px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 14px 20px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--pine); border-bottom-color: var(--pine); }
+  .tab-btn .count {
+    display:inline-block; margin-left:6px; background:var(--line-soft); color:var(--ink);
+    font-size:0.72rem; padding:1px 7px; border-radius:10px; font-weight:700;
+  }
+  .tab-btn.active .count { background: var(--pine); color:#fff; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .admin-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+
+  table.admin-table { width:100%; border-collapse: collapse; background:#fff; border-radius:var(--radius); overflow:hidden; border:1px solid var(--line-soft); }
+  table.admin-table th, table.admin-table td { padding: 14px 16px; text-align:left; font-size:0.88rem; border-bottom:1px solid var(--line-soft); vertical-align: top; }
+  table.admin-table th { background: var(--paper-warm); font-weight:700; color:var(--ink); }
+  table.admin-table tr:last-child td { border-bottom:none; }
+  table.admin-table td.muted { color: var(--ink-soft); }
+  table.admin-table .row-actions { display:flex; gap:8px; }
+  table.admin-table .row-actions button {
+    background:none; border:1px solid var(--line); padding:6px 12px; border-radius:5px;
+    font-size:0.8rem; cursor:pointer; color: var(--ink);
+  }
+  table.admin-table .row-actions button:hover { border-color: var(--pine); color: var(--pine); }
+  table.admin-table .row-actions button.danger:hover { border-color: var(--clay); color: var(--clay-dark); }
+
+  .badge { display:inline-block; padding:3px 9px; border-radius:10px; font-size:0.74rem; font-weight:700; }
+  .badge.yeni { background: rgba(184,98,63,0.12); color: var(--clay-dark); }
+  .badge.okundu { background: rgba(46,94,78,0.1); color: var(--pine-dark); }
+  .badge.yayinda { background: rgba(46,94,78,0.1); color: var(--pine-dark); }
+  .badge.taslak { background: var(--line-soft); color: var(--ink-soft); }
+
+  .empty-state { text-align:center; padding:50px 20px; color:var(--ink-soft); background:#fff; border:1px dashed var(--line); border-radius:var(--radius); }
+
+  /* Blog editör modal */
+  .modal-overlay {
+    position: fixed; inset:0; background:rgba(28,43,51,0.55);
+    display:none; align-items:center; justify-content:center; z-index:200; padding:20px;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal-box {
+    background:#fff; border-radius:var(--radius); width:100%; max-width:760px;
+    max-height:90vh; overflow-y:auto; padding:36px;
+  }
+  .modal-box h3 { margin-bottom:24px; }
+  .modal-close-row { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+
+  .helper-text { font-size:0.8rem; color: var(--ink-soft); margin-top:-4px; margin-bottom:10px; }
+
+  @media (max-width: 700px) {
+    table.admin-table { display:block; overflow-x:auto; }
+  }
+</style>
+</head>
+<body>
+
+<header class="admin-header">
+  <div class="container inner">
+    <div class="logo">Öztürkçe<span>Akademi</span> — Yönetim Paneli</div>
+    <div class="right">
+      <span id="welcome-text"></span>
+      <button class="logout" id="logout-btn">Çıkış Yap</button>
+    </div>
+  </div>
+</header>
+
+<div class="container" style="padding-top:32px; padding-bottom:80px;">
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="blog">Blog Yazıları</button>
+    <button class="tab-btn" data-tab="veli">Veli Formları <span class="count" id="veli-count">0</span></button>
+    <button class="tab-btn" data-tab="ogretmen">Öğretmen Başvuruları <span class="count" id="ogretmen-count">0</span></button>
+  </div>
+
+  <!-- BLOG TAB -->
+  <div class="tab-panel active" id="tab-blog">
+    <div class="admin-toolbar">
+      <h2 style="font-size:1.3rem;">Blog Yazıları</h2>
+      <button class="btn btn-primary" id="new-post-btn">+ Yeni Yazı</button>
+    </div>
+    <div id="blog-table-wrap"><div class="empty-state">Yükleniyor...</div></div>
+  </div>
+
+  <!-- VELİ TAB -->
+  <div class="tab-panel" id="tab-veli">
+    <div class="admin-toolbar">
+      <h2 style="font-size:1.3rem;">Veli Bilgi Formları</h2>
+    </div>
+    <div id="veli-table-wrap"><div class="empty-state">Yükleniyor...</div></div>
+  </div>
+
+  <!-- ÖĞRETMEN TAB -->
+  <div class="tab-panel" id="tab-ogretmen">
+    <div class="admin-toolbar">
+      <h2 style="font-size:1.3rem;">Öğretmen Başvuruları</h2>
+    </div>
+    <div id="ogretmen-table-wrap"><div class="empty-state">Yükleniyor...</div></div>
+  </div>
+
+</div>
+
+<!-- BLOG EDİTÖR MODAL -->
+<div class="modal-overlay" id="post-modal">
+  <div class="modal-box">
+    <h3 id="modal-title">Yeni Blog Yazısı</h3>
+    <form id="post-form">
+      <input type="hidden" name="id">
+      <div class="field">
+        <label>Başlık <span class="req">*</span></label>
+        <input type="text" name="baslik" required id="post-baslik">
+      </div>
+      <div class="field">
+        <label>Slug (URL) <span class="req">*</span></label>
+        <input type="text" name="slug" required id="post-slug">
+        <div class="helper-text">Örn. lgs-turkce-paragraf-sorulari-nasil-cozulur — sadece küçük harf, sayı ve tire.</div>
+      </div>
+      <div class="field">
+        <label>Kısa Özet</label>
+        <textarea name="ozet" placeholder="Blog kartında ve SEO açıklamasında görünür."></textarea>
+      </div>
+      <div class="field">
+        <label>Kapak Görseli (URL)</label>
+        <input type="text" name="kapak_gorseli" placeholder="https://...">
+      </div>
+      <div class="field">
+        <label>İçerik (HTML)</label>
+        <textarea name="icerik_html" style="min-height:220px; font-family:monospace; font-size:0.85rem;" placeholder="<h2>Alt Başlık</h2>&#10;<p>Paragraf...</p>&#10;<ul><li>Madde 1</li></ul>"></textarea>
+        <div class="helper-text">H2/H3 alt başlık, p paragraf, ul/li madde listesi, img görsel etiketleri kullanılabilir.</div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Yayın Tarihi</label>
+          <input type="date" name="yayin_tarihi" id="post-tarih">
+        </div>
+        <div class="field">
+          <label>Durum</label>
+          <select name="yayinda" id="post-yayinda">
+            <option value="true">Yayında</option>
+            <option value="false">Taslak</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-close-row">
+        <button type="button" class="btn btn-secondary" id="modal-cancel-btn">Vazgeç</button>
+        <button type="submit" class="btn btn-primary" id="post-save-btn">Kaydet</button>
+      </div>
+      <div class="form-status" id="post-form-status"></div>
+    </form>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script>
+  // ---------- Yetki kontrolü ----------
+  if (sessionStorage.getItem("oa_admin_giris") !== "true") {
+    window.location.href = "admin-login.html";
+  }
+  document.getElementById("welcome-text").textContent =
+    "Hoş geldiniz, " + (sessionStorage.getItem("oa_admin_kullanici") || "Admin");
+
+  document.getElementById("logout-btn").addEventListener("click", () => {
+    sessionStorage.removeItem("oa_admin_giris");
+    sessionStorage.removeItem("oa_admin_kullanici");
+    window.location.href = "admin-login.html";
+  });
+
+  // ---------- Sekme geçişleri ----------
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  function formatDateTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }) +
+      " " + d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // ====================================================
+  // BLOG YÖNETİMİ
+  // ====================================================
+  let allPosts = [];
+
+  async function loadPosts() {
+    const wrap = document.getElementById("blog-table-wrap");
+    try {
+      allPosts = await supabaseRequest("blog_yazilari", {
+        query: "?select=*&order=created_at.desc",
+      });
+      renderPostsTable();
+    } catch (err) {
+      console.error(err);
+      wrap.innerHTML = '<div class="empty-state">Yazılar yüklenemedi. Supabase bağlantı bilgilerini kontrol edin.</div>';
+    }
+  }
+
+  function renderPostsTable() {
+    const wrap = document.getElementById("blog-table-wrap");
+    if (!allPosts || allPosts.length === 0) {
+      wrap.innerHTML = '<div class="empty-state">Henüz blog yazısı eklenmemiş. "Yeni Yazı" ile başlayın.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table class="admin-table">
+        <thead>
+          <tr><th>Başlık</th><th>Slug</th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr>
+        </thead>
+        <tbody>
+          ${allPosts.map((p) => `
+            <tr>
+              <td>${escapeHtml(p.baslik)}</td>
+              <td class="muted">${escapeHtml(p.slug)}</td>
+              <td class="muted">${p.yayin_tarihi || "-"}</td>
+              <td><span class="badge ${p.yayinda ? "yayinda" : "taslak"}">${p.yayinda ? "Yayında" : "Taslak"}</span></td>
+              <td>
+                <div class="row-actions">
+                  <button onclick="editPost('${p.id}')">Düzenle</button>
+                  <button class="danger" onclick="deletePost('${p.id}')">Sil</button>
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function openPostModal() {
+    document.getElementById("post-modal").classList.add("open");
+  }
+  function closePostModal() {
+    document.getElementById("post-modal").classList.remove("open");
+    document.getElementById("post-form").reset();
+    document.getElementById("post-form-status").className = "form-status";
+  }
+
+  document.getElementById("new-post-btn").addEventListener("click", () => {
+    document.getElementById("modal-title").textContent = "Yeni Blog Yazısı";
+    document.getElementById("post-form").reset();
+    document.querySelector('[name="id"]').value = "";
+    document.getElementById("post-tarih").value = new Date().toISOString().slice(0, 10);
+    openPostModal();
+  });
+
+  document.getElementById("modal-cancel-btn").addEventListener("click", closePostModal);
+
+  window.editPost = function (id) {
+    const post = allPosts.find((p) => p.id === id);
+    if (!post) return;
+    document.getElementById("modal-title").textContent = "Yazıyı Düzenle";
+    const form = document.getElementById("post-form");
+    form.querySelector('[name="id"]').value = post.id;
+    form.querySelector('[name="baslik"]').value = post.baslik || "";
+    form.querySelector('[name="slug"]').value = post.slug || "";
+    form.querySelector('[name="ozet"]').value = post.ozet || "";
+    form.querySelector('[name="kapak_gorseli"]').value = post.kapak_gorseli || "";
+    form.querySelector('[name="icerik_html"]').value = post.icerik_html || "";
+    form.querySelector('[name="yayin_tarihi"]').value = post.yayin_tarihi || "";
+    form.querySelector('[name="yayinda"]').value = String(post.yayinda);
+    openPostModal();
+  };
+
+  window.deletePost = async function (id) {
+    if (!confirm("Bu yazıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")) return;
+    try {
+      await supabaseRequest("blog_yazilari", {
+        method: "DELETE",
+        query: `?id=eq.${id}`,
+        headers: { Prefer: "return=minimal" },
+      });
+      await loadPosts();
+    } catch (err) {
+      console.error(err);
+      alert("Silme işlemi başarısız oldu.");
+    }
+  };
+
+  // Başlıktan otomatik slug önerisi (yalnızca yeni yazıda ve slug boşsa)
+  document.getElementById("post-baslik").addEventListener("input", (e) => {
+    const idField = document.querySelector('#post-form [name="id"]');
+    const slugField = document.getElementById("post-slug");
+    if (idField.value || slugField.dataset.manual === "true") return;
+
+    const slug = e.target.value
+      .toLocaleLowerCase("tr-TR")
+      .replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s")
+      .replace(/ı/g, "i").replace(/ö/g, "o").replace(/ç/g, "c")
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+    slugField.value = slug;
+  });
+  document.getElementById("post-slug").addEventListener("input", (e) => {
+    e.target.dataset.manual = "true";
+  });
+
+  document.getElementById("post-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById("post-save-btn");
+    const status = document.getElementById("post-form-status");
+    status.className = "form-status";
+
+    const formData = new FormData(form);
+    const id = formData.get("id");
+
+    const payload = {
+      baslik: formData.get("baslik"),
+      slug: formData.get("slug"),
+      ozet: formData.get("ozet") || null,
+      kapak_gorseli: formData.get("kapak_gorseli") || null,
+      icerik_html: formData.get("icerik_html") || null,
+      yayin_tarihi: formData.get("yayin_tarihi") || new Date().toISOString().slice(0, 10),
+      yayinda: formData.get("yayinda") === "true",
+    };
+
+    btn.disabled = true;
+    btn.textContent = "Kaydediliyor...";
+
+    try {
+      if (id) {
+        await supabaseRequest("blog_yazilari", {
+          method: "PATCH",
+          query: `?id=eq.${id}`,
+          body: payload,
+          headers: { Prefer: "return=minimal" },
+        });
+      } else {
+        await supabaseRequest("blog_yazilari", {
+          method: "POST",
+          body: payload,
+          headers: { Prefer: "return=minimal" },
+        });
+      }
+
+      status.textContent = "Kaydedildi.";
+      status.classList.add("success");
+      await loadPosts();
+      setTimeout(closePostModal, 600);
+    } catch (err) {
+      console.error(err);
+      status.textContent = "Kaydetme başarısız oldu. Slug'ın benzersiz olduğundan emin olun.";
+      status.classList.add("error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Kaydet";
+    }
+  });
+
+  // ====================================================
+  // VELİ FORMLARI
+  // ====================================================
+  async function loadVeliForms() {
+    const wrap = document.getElementById("veli-table-wrap");
+    try {
+      const forms = await supabaseRequest("veli_formlari", {
+        query: "?select=*&order=created_at.desc",
+      });
+
+      document.getElementById("veli-count").textContent = forms.filter((f) => !f.okundu).length;
+
+      if (!forms || forms.length === 0) {
+        wrap.innerHTML = '<div class="empty-state">Henüz veli formu gönderilmemiş.</div>';
+        return;
+      }
+
+      wrap.innerHTML = `
+        <table class="admin-table">
+          <thead>
+            <tr><th>Ad Soyad</th><th>Telefon</th><th>Sınıf</th><th>Ders</th><th>Mesaj</th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr>
+          </thead>
+          <tbody>
+            ${forms.map((f) => `
+              <tr>
+                <td>${escapeHtml(f.ad_soyad)}</td>
+                <td class="muted">${escapeHtml(f.telefon)}</td>
+                <td class="muted">${escapeHtml(f.ogrenci_sinifi) || "-"}</td>
+                <td class="muted">${escapeHtml(f.ders_alani) || "-"}</td>
+                <td class="muted">${escapeHtml(f.mesaj) || "-"}</td>
+                <td class="muted">${formatDateTime(f.created_at)}</td>
+                <td><span class="badge ${f.okundu ? "okundu" : "yeni"}">${f.okundu ? "Okundu" : "Yeni"}</span></td>
+                <td>
+                  <div class="row-actions">
+                    ${!f.okundu ? `<button onclick="markVeliRead('${f.id}')">Okundu İşaretle</button>` : ""}
+                    <button class="danger" onclick="deleteVeliForm('${f.id}')">Sil</button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      console.error(err);
+      wrap.innerHTML = '<div class="empty-state">Formlar yüklenemedi. Supabase bağlantı bilgilerini kontrol edin.</div>';
+    }
+  }
+
+  window.markVeliRead = async function (id) {
+    try {
+      await supabaseRequest("veli_formlari", {
+        method: "PATCH",
+        query: `?id=eq.${id}`,
+        body: { okundu: true },
+        headers: { Prefer: "return=minimal" },
+      });
+      await loadVeliForms();
+    } catch (err) {
+      console.error(err);
+      alert("İşlem başarısız oldu.");
+    }
+  };
+
+  window.deleteVeliForm = async function (id) {
+    if (!confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
+    try {
+      await supabaseRequest("veli_formlari", {
+        method: "DELETE",
+        query: `?id=eq.${id}`,
+        headers: { Prefer: "return=minimal" },
+      });
+      await loadVeliForms();
+    } catch (err) {
+      console.error(err);
+      alert("Silme işlemi başarısız oldu.");
+    }
+  };
+
+  // ====================================================
+  // ÖĞRETMEN BAŞVURULARI
+  // ====================================================
+  async function loadOgretmenBasvurulari() {
+    const wrap = document.getElementById("ogretmen-table-wrap");
+    try {
+      const apps = await supabaseRequest("ogretmen_basvurulari", {
+        query: "?select=*&order=created_at.desc",
+      });
+
+      document.getElementById("ogretmen-count").textContent = apps.filter((a) => !a.okundu).length;
+
+      if (!apps || apps.length === 0) {
+        wrap.innerHTML = '<div class="empty-state">Henüz öğretmen başvurusu yapılmamış.</div>';
+        return;
+      }
+
+      wrap.innerHTML = `
+        <table class="admin-table">
+          <thead>
+            <tr><th>Ad Soyad</th><th>Telefon</th><th>Branş</th><th>E-posta</th><th>Deneyim</th><th>Tanıtım</th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr>
+          </thead>
+          <tbody>
+            ${apps.map((a) => `
+              <tr>
+                <td>${escapeHtml(a.ad_soyad)}</td>
+                <td class="muted">${escapeHtml(a.telefon)}</td>
+                <td class="muted">${escapeHtml(a.brans)}</td>
+                <td class="muted">${escapeHtml(a.eposta) || "-"}</td>
+                <td class="muted">${escapeHtml(a.deneyim) || "-"}</td>
+                <td class="muted">${escapeHtml(a.tanitim) || "-"}</td>
+                <td class="muted">${formatDateTime(a.created_at)}</td>
+                <td><span class="badge ${a.okundu ? "okundu" : "yeni"}">${a.okundu ? "Okundu" : "Yeni"}</span></td>
+                <td>
+                  <div class="row-actions">
+                    ${!a.okundu ? `<button onclick="markOgretmenRead('${a.id}')">Okundu İşaretle</button>` : ""}
+                    <button class="danger" onclick="deleteOgretmenApp('${a.id}')">Sil</button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      console.error(err);
+      wrap.innerHTML = '<div class="empty-state">Başvurular yüklenemedi. Supabase bağlantı bilgilerini kontrol edin.</div>';
+    }
+  }
+
+  window.markOgretmenRead = async function (id) {
+    try {
+      await supabaseRequest("ogretmen_basvurulari", {
+        method: "PATCH",
+        query: `?id=eq.${id}`,
+        body: { okundu: true },
+        headers: { Prefer: "return=minimal" },
+      });
+      await loadOgretmenBasvurulari();
+    } catch (err) {
+      console.error(err);
+      alert("İşlem başarısız oldu.");
+    }
+  };
+
+  window.deleteOgretmenApp = async function (id) {
+    if (!confirm("Bu başvuruyu silmek istediğinize emin misiniz?")) return;
+    try {
+      await supabaseRequest("ogretmen_basvurulari", {
+        method: "DELETE",
+        query: `?id=eq.${id}`,
+        headers: { Prefer: "return=minimal" },
+      });
+      await loadOgretmenBasvurulari();
+    } catch (err) {
+      console.error(err);
+      alert("Silme işlemi başarısız oldu.");
+    }
+  };
+
+  // ---------- İlk yükleme ----------
+  loadPosts();
+  loadVeliForms();
+  loadOgretmenBasvurulari();
+</script>
+</body>
+</html>
